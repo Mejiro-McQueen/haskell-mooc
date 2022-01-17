@@ -47,10 +47,10 @@ type Col   = Int
 type Coord = (Row, Col)
 
 nextRow :: Coord -> Coord
-nextRow (i,j) = todo
+nextRow (i,j) = (i+1, 1)
 
 nextCol :: Coord -> Coord
-nextCol (i,j) = todo
+nextCol (i,j) = (i, j+1)
 
 --------------------------------------------------------------------------------
 -- Ex 2: Implement the function prettyPrint that, given the size of
@@ -100,7 +100,17 @@ nextCol (i,j) = todo
 -- takes O(n^3) time. Just ignore the previous sentence, if you're not familiar
 -- with the O-notation.)
 prettyPrint :: Size -> [Coord] -> String
-prettyPrint = todo
+prettyPrint n queens = concatMap symbol board
+    where
+        board::[Coord]
+        board = [(row, col) | row <- [1..n], col <-[1..n]]
+
+        symbol:: Coord -> String
+        symbol curr@(row, col)
+            | col == n && curr `elem` queens = "Q\n"
+            | col == n && notElem curr queens = ".\n"
+            | curr `elem` queens = "Q"
+            | otherwise = "."
 
 --------------------------------------------------------------------------------
 -- Ex 3: The task in this exercise is to define the relations sameRow, sameCol,
@@ -124,16 +134,20 @@ prettyPrint = todo
 --   sameAntidiag (500,5) (5,500) ==> True
 
 sameRow :: Coord -> Coord -> Bool
-sameRow (i,j) (k,l) = todo
+sameRow (i,j) (k,l) = i==k
 
 sameCol :: Coord -> Coord -> Bool
-sameCol (i,j) (k,l) = todo
+sameCol (i,j) (k,l) = j==l
 
 sameDiag :: Coord -> Coord -> Bool
-sameDiag (i,j) (k,l) = todo
+sameDiag (i,j) (k,l)
+    | i == k && j==l = True
+    | otherwise = (j-l) == (i-k) -- (j-l) * (i-k) > 0 -- This should fail 
 
 sameAntidiag :: Coord -> Coord -> Bool
-sameAntidiag (i,j) (k,l) = todo
+sameAntidiag (i,j) (k,l)
+    | i == k && j==l = True
+    | otherwise = (j-l) == -(i-k)
 
 --------------------------------------------------------------------------------
 -- Ex 4: In chess, a queen may capture another piece in the same row, column,
@@ -189,7 +203,10 @@ type Candidate = Coord
 type Stack     = [Coord]
 
 danger :: Candidate -> Stack -> Bool
-danger = todo
+danger candidate = any dangerzone
+    where
+        dangerzone queen = or $ [sameRow, sameCol, sameDiag, sameAntidiag] <*> [candidate] <*> [queen]
+
 
 --------------------------------------------------------------------------------
 -- Ex 5: In this exercise, the task is to write a modified version of
@@ -224,7 +241,24 @@ danger = todo
 -- solution to this version. Any working solution is okay in this exercise.)
 
 prettyPrint2 :: Size -> Stack -> String
-prettyPrint2 = todo
+prettyPrint2 n queens = concat $ zipWith eol p board
+    where
+        p = map symbol board
+
+        board::[Coord]
+        board = [(row, col) | row <- [1..n], col <-[1..n]]
+
+        isQueen::Coord -> Bool
+        isQueen current = current `elem` queens
+
+        symbol:: Coord -> String
+        symbol curr
+            | isQueen curr = "Q"
+            | danger curr queens = "#"
+            | otherwise = "."
+
+        eol:: String -> Coord -> String
+        eol string curr@(row,col) = if col == n then string++"\n" else string
 
 --------------------------------------------------------------------------------
 -- Ex 6: Now that we can check if a piece can be safely placed into a square in
@@ -269,7 +303,13 @@ prettyPrint2 = todo
 --     Q#######
 
 fixFirst :: Size -> Stack -> Maybe Stack
-fixFirst n s = todo
+fixFirst n [] = Just []
+fixFirst n [a] = Just [a]
+fixFirst n (first@(row,col):rest)
+    | danger first rest && col >= n = Nothing
+    | not $ danger first rest = Just $ first:rest
+    | danger first rest && col < n = fixFirst n $ (row, col+1):rest
+fixFirst n list = fixFirst n list
 
 --------------------------------------------------------------------------------
 -- Ex 7: We need two helper functions for stack management.
@@ -291,10 +331,13 @@ fixFirst n s = todo
 -- Hint: Remember nextRow and nextCol? Use them!
 
 continue :: Stack -> Stack
-continue s = todo
+continue s = nextRow (head s) :s
 
 backtrack :: Stack -> Stack
-backtrack s = todo
+backtrack s =  previous : drop 2 s
+    where
+        previous = nextCol $ head backtracked
+        backtracked = drop 1 s
 
 --------------------------------------------------------------------------------
 -- Ex 8: Let's take a step. Our algorithm solves the problem (in a

@@ -15,6 +15,10 @@ import Data.List
 import Data.Ord
 
 import Mooc.Todo
+import Data.Maybe (fromMaybe, isJust, catMaybes)
+import Data.Either (fromRight, isLeft)
+import Data.IntMap.Strict (empty)
+import Data.Text.Internal.Fusion.Size (isEmpty)
 
 ------------------------------------------------------------------------------
 -- Ex 1: Implement a function workload that takes in the number of
@@ -26,7 +30,12 @@ import Mooc.Todo
 -- Otherwise return "Ok."
 
 workload :: Int -> Int -> String
-workload nExercises hoursPerExercise = todo
+workload nExercises hoursPerExercise
+  | time <= 10 = "Piece of cake!"
+  | time <= 100 = "Ok."
+  | otherwise = "Holy moly!"
+  where
+    time = nExercises * hoursPerExercise
 
 ------------------------------------------------------------------------------
 -- Ex 2: Implement the function echo that builds a string like this:
@@ -39,7 +48,8 @@ workload nExercises hoursPerExercise = todo
 -- Hint: use recursion
 
 echo :: String -> String
-echo = todo
+echo [] = ""
+echo s = s ++ ", " ++ echo (tail s)
 
 ------------------------------------------------------------------------------
 -- Ex 3: A country issues some banknotes. The banknotes have a serial
@@ -52,7 +62,10 @@ echo = todo
 -- are valid.
 
 countValid :: [String] -> Int
-countValid = todo
+countValid checks = length $ filter id $ map valid checks
+  where
+    valid check = check !! 2 == check !! 4 || check !! 3 == check !! 5
+
 
 ------------------------------------------------------------------------------
 -- Ex 4: Find the first element that repeats two or more times _in a
@@ -64,7 +77,11 @@ countValid = todo
 --   repeated [1,2,1,2,3,3] ==> Just 3
 
 repeated :: Eq a => [a] -> Maybe a
-repeated = todo
+repeated [] = Nothing
+repeated [_] = Nothing
+repeated (x:y:zs)
+  | x == y = Just x
+  | otherwise = repeated (y:zs)
 
 ------------------------------------------------------------------------------
 -- Ex 5: A laboratory has been collecting measurements. Some of the
@@ -86,7 +103,14 @@ repeated = todo
 --     ==> Left "no data"
 
 sumSuccess :: [Either String Int] -> Either String Int
-sumSuccess = todo
+sumSuccess [] = Left "no data"
+sumSuccess ms
+  | null filtered = Left "no data"
+  | otherwise = Right $ foldr (\(Right n)-> (+) n) 0 filtered
+  where
+  isRight (Left _) = False
+  isRight (Right _) = True
+  filtered = filter isRight ms
 
 ------------------------------------------------------------------------------
 -- Ex 6: A combination lock can either be open or closed. The lock
@@ -108,30 +132,34 @@ sumSuccess = todo
 --   isOpen (open "0000" (lock (changeCode "0000" (open "1234" aLock)))) ==> True
 --   isOpen (open "1234" (lock (changeCode "0000" (open "1234" aLock)))) ==> False
 
-data Lock = LockUndefined
+data Lock = Open Int | Closed Int
   deriving Show
 
 -- aLock should be a locked lock with the code "1234"
 aLock :: Lock
-aLock = todo
+aLock = Closed 1234
 
 -- isOpen returns True if the lock is open
 isOpen :: Lock -> Bool
-isOpen = todo
+isOpen (Open n) = True
+isOpen (Closed _) = False
 
 -- open tries to open the lock with the given code. If the code is
 -- wrong, nothing happens.
 open :: String -> Lock -> Lock
-open = todo
+open code (Closed n) = if read code == n then Open n else Closed n
+open _ (Open n) = Open n
 
 -- lock closes a lock. If the lock is already closed, nothing happens.
 lock :: Lock -> Lock
-lock = todo
+lock (Open n) = Closed n
+lock (Closed n) = Closed n
 
 -- changeCode changes the code of an open lock. If the lock is closed,
 -- nothing happens.
 changeCode :: String -> Lock -> Lock
-changeCode = todo
+changeCode code (Open n)  = Open $ read code
+changeCode code (Closed n) = Closed n
 
 ------------------------------------------------------------------------------
 -- Ex 7: Here's a type Text that just wraps a String. Implement an Eq
@@ -148,6 +176,12 @@ changeCode = todo
 
 data Text = Text String
   deriving Show
+
+instance Eq Text where
+  -- (==) (Text a) (Text b) =  filter (not . isControl) (filter (not . isSpace) a) == filter (not . isControl) (filter (not . isSpace) b)
+  --Monad THE ULTIMATE
+  (==) (Text a) (Text b) =  filter (not . isControl >> not . isSpace) a == filter (not . isControl >> not . isSpace) b
+
 
 
 ------------------------------------------------------------------------------
@@ -182,7 +216,9 @@ data Text = Text String
 --       ==> [("a",1),("b",2)]
 
 compose :: (Eq a, Eq b) => [(a,b)] -> [(b,c)] -> [(a,c)]
-compose = todo
+compose as bs = catMaybes $ map findchain as
+  where
+    findchain (a,b) = lookup a as >>= (`lookup` bs) >>= (\y -> return (a,y))
 
 ------------------------------------------------------------------------------
 -- Ex 9: Reorder a list using a list of indices.
@@ -226,4 +262,9 @@ multiply :: Permutation -> Permutation -> Permutation
 multiply p q = map (\i -> p !! (q !! i)) (identity (length p))
 
 permute :: Permutation -> [a] -> [a]
-permute = todo
+permute permutations elements = g permutations elements
+  where 
+    target (from, _) = elements !! from 
+    repl (from, to) x = take to elements ++ [target (from,to)]  
+    removed (from, to) = take (from - 1) elements ++ drop from elements
+
